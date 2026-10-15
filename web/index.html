@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>English Partner</title>
+<style>
+  :root {
+    --bg: #eef2f6; --ink: #1c2733; --muted: #5f6f80; --card: #ffffff;
+    --accent: #1f6feb; --live: #e5484d; --ok: #1a7f4b; --fix: #fff4d6; --line: #d6dee7;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; display: flex; justify-content: center; }
+  main { width: 100%; max-width: 640px; padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { margin: 0; font-size: 1.4rem; }
+  .sub { margin: 0; color: var(--muted); font-size: .9rem; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+  .who { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: .85rem; color: var(--muted); }
+  .who button { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+  #health.up { color: var(--ok); } #health.down { color: var(--live); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .auth { display: flex; flex-direction: column; gap: 10px; }
+  .auth .row { display: flex; gap: 8px; }
+  .settings { display: flex; gap: 8px; flex-wrap: wrap; }
+  .settings label { display: flex; flex-direction: column; font-size: .8rem; color: var(--muted); gap: 2px; flex: 1; min-width: 140px; }
+  input, select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
+  .btn { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #histbox { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+  #histbox summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+  #histlist { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+  .hrow { display: flex; gap: 2px; }
+  .hopen { flex: 1; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .9rem; color: var(--ink); cursor: pointer; }
+  .hopen:hover { background: var(--bg); }
+  .hrow.cur .hopen { border-color: var(--accent); }
+  .hopen small { display: block; color: var(--muted); font-size: .75rem; }
+  .hact { background: none; border: 0; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 0 8px; border-radius: 8px; }
+  .hact:hover { color: var(--ink); background: var(--bg); }
+  .hnone { color: var(--muted); font-size: .85rem; margin: 4px 0; }
+  #log { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-height: 280px; max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .empty { color: var(--muted); margin: auto; text-align: center; }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; }
+  .me { align-self: flex-end; background: var(--accent); color: #fff; }
+  .ai { align-self: flex-start; background: #edf1f5; }
+  .fix { align-self: flex-start; background: var(--fix); font-size: .9rem; border-radius: 8px; padding: 6px 10px; }
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #talk { width: 96px; height: 96px; border-radius: 50%; border: 0; cursor: pointer; background: var(--accent); color: #fff; font: 600 1rem system-ui; }
+  #talk:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  #talk.on { background: var(--live); }
+  #talk.wait { background: var(--muted); }
+  #talk.listening { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.5); } 50% { box-shadow: 0 0 0 16px rgba(229,72,77,0); } }
+  @media (prefers-reduced-motion: reduce) { #talk.listening { animation: none; } }
+  #live { min-height: 1.4em; text-align: center; font-style: italic; }
+  #status { color: var(--muted); font-size: .9rem; min-height: 1.4em; text-align: center; }
+  .err { color: var(--live); font-size: .9rem; text-align: center; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>English Partner</h1>
+      <p class="sub">Talk at your own pace. Use Chrome and wear headphones.</p>
+    </div>
+    <div class="who">
+      <span id="health" class="down">● checking...</span>
+      <span id="who" hidden></span>
+      <button id="logout" hidden>Log out</button>
+    </div>
+  </div>
+
+  <!-- Login / Register -->
+  <section id="authBox" class="card auth">
+    <strong>Log in to continue</strong>
+    <form id="authForm" class="auth">
+      <input id="au" placeholder="Username" autocomplete="username" required>
+      <input id="ap" type="password" placeholder="Password (min. 6 characters)" autocomplete="current-password" required>
+      <div class="row">
+        <button class="btn primary" type="submit">Log in</button>
+        <button class="btn" type="button" id="registerBtn">Register</button>
+      </div>
+    </form>
+    <div id="authErr" class="err"></div>
+    <p class="sub">Demo accounts: alice / alice123 and bob / bob123.</p>
+  </section>
+
+  <!-- App -->
+  <section id="appBox" hidden style="display:flex; flex-direction:column; gap:16px;">
+    <div class="settings">
+      <label>Your level
+        <select id="level">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </label>
+      <label>Topic (optional)
+        <input id="topic" placeholder="e.g. job interview" maxlength="100">
+      </label>
+    </div>
+
+    <details id="histbox">
+      <summary>History</summary>
+      <div id="histlist"></div>
+    </details>
+
+    <div id="log"><p class="empty">Your conversation will show up here.</p></div>
+
+    <div class="stage">
+      <div id="live"></div>
+      <button id="talk">Talk</button>
+      <div id="status">Ready.</div>
+      <div id="err" class="err"></div>
+      <button id="newchat" class="btn">New chat</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const logEl = $("log"), statusEl = $("status"), errEl = $("err"), talkBtn = $("talk"), liveEl = $("live");
+const histBox = $("histbox"), histList = $("histlist");
+const EMPTY = '<p class="empty">Your conversation will show up here.</p>';
+
+let token = null, username = null, currentChatId = null, chats = [];
+try { token = localStorage.getItem("sp_token"); username = localStorage.getItem("sp_user"); } catch (_) {}
+
+/* ---------------- API helper ---------------- */
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = "Bearer " + token;
+  let res;
+  try { res = await fetch(path, { ...opts, headers }); }
+  catch (_) { throw new Error("Cannot reach the server. Is it running?"); }
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && token) { logout(); throw new Error("Session expired. Please log in again."); }
+  if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ")");
+  return data;
+}
+
+/* ---------------- Health indicator ---------------- */
+async function checkHealth() {
+  const el = $("health");
+  try {
+    const r = await fetch("/health");
+    const ok = r.ok;
+    el.textContent = ok ? "● Server online" : "● Database down";
+    el.className = ok ? "up" : "down";
+  } catch (_) {
+    el.textContent = "● Server offline";
+    el.className = "down";
+  }
+}
+checkHealth();
+setInterval(checkHealth, 10000);
+
+/* ---------------- Auth ---------------- */
+function enterApp() {
+  $("authBox").hidden = true;
+  $("appBox").hidden = false;
+  $("who").hidden = false; $("who").textContent = "Signed in as " + username;
+  $("logout").hidden = false;
+  resetChatView();
+  loadChats(true).catch(e => { errEl.textContent = e.message; });
+}
+
+function logout() {
+  try { localStorage.removeItem("sp_token"); localStorage.removeItem("sp_user"); } catch (_) {}
+  token = null; username = null; currentChatId = null; chats = [];
+  recording = false; busy = false; thinking = false;
+  speechSynthesis.cancel();
+  try { rec && rec.abort(); } catch (_) {}
+  $("appBox").hidden = true; $("authBox").hidden = false;
+  $("who").hidden = true; $("logout").hidden = true;
+  $("ap").value = "";
+}
+
+async function doAuth(kind) {
+  const err = $("authErr");
+  err.textContent = "";
+  try {
+    const data = await api("/api/" + kind, { method: "POST", body: JSON.stringify({ username: $("au").value.trim(), password: $("ap").value }) });
+    token = data.token; username = data.username;
+    try { localStorage.setItem("sp_token", token); localStorage.setItem("sp_user", username); } catch (_) {}
+    enterApp();
+  } catch (e) { err.textContent = e.message; }
+}
+$("authForm").addEventListener("submit", e => { e.preventDefault(); doAuth("login"); });
+$("registerBtn").addEventListener("click", () => doAuth("register"));
+$("logout").addEventListener("click", logout);
+
+/* ---------------- Chat list (History) ---------------- */
+function splitFix(full) {
+  const parts = String(full).split(/\n+\s*Fix:/i);
+  return { reply: parts[0].trim(), fix: parts[1] ? parts[1].trim() : "" };
+}
+
+function addMsg(cls, text) {
+  const empty = logEl.querySelector(".empty");
+  if (empty) empty.remove();
+  const d = document.createElement("div");
+  d.className = cls === "fix" ? "fix" : "msg " + cls;
+  d.textContent = text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function resetChatView() {
+  currentChatId = null;
+  logEl.innerHTML = EMPTY;
+  errEl.textContent = "";
+}
+
+function renderMessages(list) {
+  logEl.innerHTML = "";
+  if (!list.length) { logEl.innerHTML = EMPTY; return; }
+  list.forEach(m => {
+    if (m.role === "user") addMsg("me", m.content);
+    else { const s = splitFix(m.content); addMsg("ai", s.reply); if (s.fix) addMsg("fix", "Fix: " + s.fix); }
+  });
+}
+
+async function loadChats(openLatest) {
+  chats = await api("/api/chats");
+  renderHistory();
+  if (openLatest && chats.length) await openChat(chats[0].id, true);
+}
+
+function blocked() {
+  if (recording || thinking) { setStatus("Finish your turn first, then switch chats."); return true; }
+  return false;
+}
+
+async function openChat(id, silent) {
+  if (blocked()) return;
+  try {
+    const d = await api("/api/chats/" + id);
+    speechSynthesis.cancel();
+    currentChatId = d.id;
+    renderMessages(d.messages);
+    renderHistory();
+    errEl.textContent = "";
+    histBox.open = false;
+    if (!silent) setStatus("Chat opened. Press Talk to continue.");
+  } catch (e) { errEl.textContent = e.message; }
+}
+
+async function deleteChat(id) {
+  if (id === currentChatId && blocked()) return;
+  if (!confirm("Delete this chat?")) return;
+  try {
+    await api("/api/chats/" + id, { method: "DELETE" });
+    if (id === currentChatId) { speechSynthesis.cancel(); resetChatView(); }
+    await loadChats(false);
+  } catch (e) { errEl.textContent = e.message; }
+}
+
+async function renameChat(id, oldTitle) {
+  const t = prompt("New title:", oldTitle);
+  if (t === null) return;
+  try {
+    await api("/api/chats/" + id, { method: "PATCH", body: JSON.stringify({ title: t }) });
+    await loadChats(false);
+  } catch (e) { errEl.textContent = e.message; }
+}
+
+function newChat() {
+  if (blocked()) return;
+  speechSynthesis.cancel();
+  resetChatView();
+  renderHistory();
+  setStatus("New chat. Press Talk when you are ready.");
+}
+$("newchat").addEventListener("click", newChat);
+
+function renderHistory() {
+  histList.innerHTML = "";
+  if (!chats.length) {
+    const p = document.createElement("p"); p.className = "hnone"; p.textContent = "No saved chats yet.";
+    histList.appendChild(p); return;
+  }
+  chats.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "hrow" + (c.id === currentChatId ? " cur" : "");
+    const open = document.createElement("button");
+    open.className = "hopen"; open.textContent = c.title;
+    const small = document.createElement("small");
+    small.textContent = new Date(c.updated_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    open.appendChild(small);
+    open.addEventListener("click", () => openChat(c.id));
+    const ren = document.createElement("button");
+    ren.className = "hact"; ren.textContent = "✎"; ren.title = "Rename";
+    ren.addEventListener("click", () => renameChat(c.id, c.title));
+    const del = document.createElement("button");
+    del.className = "hact"; del.textContent = "×"; del.title = "Delete";
+    del.addEventListener("click", () => deleteChat(c.id));
+    row.append(open, ren, del);
+    histList.appendChild(row);
+  });
+}
+
+/* ---------------- Speech: Talk / Done ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) { errEl.textContent = "This browser has no speech recognition. Open this page in Chrome."; talkBtn.disabled = true; }
+
+let rec, recording = false, busy = false, thinking = false;
+let finalText = "", interimText = "";
+
+function setStatus(t) { statusEl.textContent = t; }
+function setButton(label, cls) {
+  talkBtn.textContent = label;
+  talkBtn.classList.remove("on", "listening", "wait");
+  if (cls) talkBtn.classList.add(...cls.split(" "));
+}
+function showLive() { liveEl.textContent = (finalText + " " + interimText).trim(); }
+
+function setupRecognition() {
+  rec = new SR();
+  rec.lang = "en-US";
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.onresult = e => {
+    interimText = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t + " "; else interimText += t;
+    }
+    showLive();
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed") {
+      errEl.textContent = "Microphone blocked. Allow mic access and try again.";
+      recording = false; setButton("Talk"); setStatus("Ready.");
+    }
+  };
+  // Chrome kadang menutup mic sendiri saat jeda; selama masih "recording", buka lagi.
+  rec.onend = () => {
+    if (recording) setTimeout(() => { try { rec.start(); } catch (_) {} }, 150);
+    else send();
+  };
+}
+
+function startRecording() {
+  speechSynthesis.cancel();
+  errEl.textContent = "";
+  finalText = ""; interimText = ""; liveEl.textContent = "";
+  recording = true;
+  setButton("Done", "on listening");
+  setStatus("Listening... take your time, press Done when you finish.");
+  try { rec.start(); } catch (_) {}
+}
+
+function stopRecording() {
+  recording = false;
+  setButton("...", "wait");
+  setStatus("Processing...");
+  try { rec.stop(); } catch (_) { send(); }
+}
+
+async function send() {
+  const userText = (finalText + " " + interimText).trim();
+  finalText = ""; interimText = ""; liveEl.textContent = "";
+  if (!userText) { setButton("Talk"); setStatus("I did not catch anything. Press Talk and try again."); return; }
+  busy = true; thinking = true;
+  addMsg("me", userText);
+  setStatus("Thinking...");
+  try {
+    if (!currentChatId) {
+      const c = await api("/api/chats", { method: "POST", body: JSON.stringify({}) });
+      currentChatId = c.id;
+    }
+    const data = await api("/api/chats/" + currentChatId + "/messages", {
+      method: "POST",
+      body: JSON.stringify({ content: userText, level: $("level").value, topic: $("topic").value.trim() })
+    });
+    thinking = false;
+    const s = splitFix(data.reply);
+    addMsg("ai", s.reply);
+    if (s.fix) addMsg("fix", "Fix: " + s.fix);
+    speak(s.reply);
+    loadChats(false).catch(() => {});
+  } catch (err) {
+    errEl.textContent = err.message;
+    busy = false; thinking = false;
+    setButton("Talk"); setStatus("Ready.");
+  }
+}
+
+function speak(text) {
+  setStatus("Speaking... press Talk to answer anytime.");
+  setButton("Talk");
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = $("level").value === "beginner" ? 0.85 : 1;
+  u.onend = u.onerror = () => { busy = false; setStatus("Your turn. Press Talk when you are ready."); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+if (SR) setupRecognition();
+talkBtn.addEventListener("click", () => { if (recording) stopRecording(); else startRecording(); });
+
+/* ---------------- Start ---------------- */
+if (token && username) enterApp();
+</script>
+</body>
+</html>

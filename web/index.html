@@ -22,6 +22,9 @@
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
   .auth { display: flex; flex-direction: column; gap: 10px; }
   .auth .row { display: flex; gap: 8px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tab { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px; font: inherit; color: var(--muted); cursor: pointer; }
+  .tab.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
   .settings { display: flex; gap: 8px; flex-wrap: wrap; }
   .settings label { display: flex; flex-direction: column; font-size: .8rem; color: var(--muted); gap: 2px; flex: 1; min-width: 140px; }
   input, select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
@@ -52,6 +55,11 @@
   #talk.listening { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.5); } 50% { box-shadow: 0 0 0 16px rgba(229,72,77,0); } }
   @media (prefers-reduced-motion: reduce) { #talk.listening { animation: none; } }
+  #review { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  #review label { font-size: .8rem; color: var(--muted); }
+  #draft { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; resize: vertical; background: var(--card); color: var(--ink); }
+  #draft:disabled { border-color: var(--line); color: var(--muted); }
+  #review .row { display: flex; gap: 8px; justify-content: center; }
   #live { min-height: 1.4em; text-align: center; font-style: italic; }
   #status { color: var(--muted); font-size: .9rem; min-height: 1.4em; text-align: center; }
   .err { color: var(--live); font-size: .9rem; text-align: center; min-height: 1.2em; }
@@ -67,23 +75,24 @@
     <div class="who">
       <span id="health" class="down">● checking...</span>
       <span id="who" hidden></span>
-      <button id="logout" hidden>Log out</button>
+      <button id="logout" hidden>Sign out</button>
     </div>
   </div>
 
-  <!-- Login / Register -->
+  <!-- Sign in / Sign up -->
   <section id="authBox" class="card auth">
-    <strong>Log in to continue</strong>
+    <div class="tabs" role="tablist">
+      <button type="button" id="tabIn" class="tab active" role="tab">Sign in</button>
+      <button type="button" id="tabUp" class="tab" role="tab">Sign up</button>
+    </div>
     <form id="authForm" class="auth">
       <input id="au" placeholder="Username" autocomplete="username" required>
       <input id="ap" type="password" placeholder="Password (min. 6 characters)" autocomplete="current-password" required>
-      <div class="row">
-        <button class="btn primary" type="submit">Log in</button>
-        <button class="btn" type="button" id="registerBtn">Register</button>
-      </div>
+      <input id="ap2" type="password" placeholder="Confirm password" autocomplete="new-password" hidden>
+      <button class="btn primary" id="authSubmit" type="submit">Sign in</button>
     </form>
     <div id="authErr" class="err"></div>
-    <p class="sub">Demo accounts: alice / alice123 and bob / bob123.</p>
+    <p id="authHint" class="sub">New here? Choose "Sign up" to create an account.</p>
   </section>
 
   <!-- App -->
@@ -110,6 +119,14 @@
 
     <div class="stage">
       <div id="live"></div>
+      <div id="review" hidden>
+        <label for="draft">Check your sentence. Fix any mistakes, then send.</label>
+        <textarea id="draft" rows="3" maxlength="2000"></textarea>
+        <div class="row">
+          <button id="sendBtn" class="btn primary" type="button">Send</button>
+          <button id="discardBtn" class="btn" type="button">Discard</button>
+        </div>
+      </div>
       <button id="talk">Talk</button>
       <div id="status">Ready.</div>
       <div id="err" class="err"></div>
@@ -122,6 +139,7 @@
 const $ = id => document.getElementById(id);
 const logEl = $("log"), statusEl = $("status"), errEl = $("err"), talkBtn = $("talk"), liveEl = $("live");
 const histBox = $("histbox"), histList = $("histlist");
+const reviewEl = $("review"), draftEl = $("draft");
 const EMPTY = '<p class="empty">Your conversation will show up here.</p>';
 
 let token = null, username = null, currentChatId = null, chats = [];
@@ -136,7 +154,7 @@ async function api(path, opts = {}) {
   catch (_) { throw new Error("Cannot reach the server. Is it running?"); }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && token) { logout(); throw new Error("Session expired. Please log in again."); }
+  if (res.status === 401 && token) { logout(); throw new Error("Session expired. Please sign in again."); }
   if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ")");
   return data;
 }
@@ -176,6 +194,8 @@ function logout() {
   $("appBox").hidden = true; $("authBox").hidden = false;
   $("who").hidden = true; $("logout").hidden = true;
   $("ap").value = "";
+  clearDraft();
+  setMode("login");
 }
 
 async function doAuth(kind) {
@@ -188,8 +208,32 @@ async function doAuth(kind) {
     enterApp();
   } catch (e) { err.textContent = e.message; }
 }
-$("authForm").addEventListener("submit", e => { e.preventDefault(); doAuth("login"); });
-$("registerBtn").addEventListener("click", () => doAuth("register"));
+let authMode = "login";
+function setMode(m) {
+  authMode = m;
+  const up = m === "register";
+  $("tabIn").classList.toggle("active", !up);
+  $("tabUp").classList.toggle("active", up);
+  $("ap2").hidden = !up;
+  $("ap2").required = up;
+  $("ap2").value = "";
+  $("ap").autocomplete = up ? "new-password" : "current-password";
+  $("authSubmit").textContent = up ? "Create account" : "Sign in";
+  $("authHint").textContent = up
+    ? "Username: 3-30 letters, numbers or underscore. Password: at least 6 characters."
+    : 'New here? Choose "Sign up" to create an account.';
+  $("authErr").textContent = "";
+}
+$("tabIn").addEventListener("click", () => setMode("login"));
+$("tabUp").addEventListener("click", () => setMode("register"));
+$("authForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (authMode === "register" && $("ap").value !== $("ap2").value) {
+    $("authErr").textContent = "Passwords do not match.";
+    return;
+  }
+  doAuth(authMode);
+});
 $("logout").addEventListener("click", logout);
 
 /* ---------------- Chat list (History) ---------------- */
@@ -209,6 +253,7 @@ function addMsg(cls, text) {
 }
 
 function resetChatView() {
+  clearDraft();
   currentChatId = null;
   logEl.innerHTML = EMPTY;
   errEl.textContent = "";
@@ -239,6 +284,7 @@ async function openChat(id, silent) {
   try {
     const d = await api("/api/chats/" + id);
     speechSynthesis.cancel();
+    clearDraft();
     currentChatId = d.id;
     renderMessages(d.messages);
     renderHistory();
@@ -339,13 +385,15 @@ function setupRecognition() {
   // Chrome kadang menutup mic sendiri saat jeda; selama masih "recording", buka lagi.
   rec.onend = () => {
     if (recording) setTimeout(() => { try { rec.start(); } catch (_) {} }, 150);
-    else send();
+    else showDraft();
   };
 }
 
 function startRecording() {
   speechSynthesis.cancel();
   errEl.textContent = "";
+  baseText = reviewEl.hidden ? "" : draftEl.value.trim();
+  draftEl.disabled = true;
   finalText = ""; interimText = ""; liveEl.textContent = "";
   recording = true;
   setButton("Done", "on listening");
@@ -357,13 +405,49 @@ function stopRecording() {
   recording = false;
   setButton("...", "wait");
   setStatus("Processing...");
-  try { rec.stop(); } catch (_) { send(); }
+  try { rec.stop(); } catch (_) { showDraft(); }
 }
 
-async function send() {
-  const userText = (finalText + " " + interimText).trim();
+let baseText = "";
+
+// Setelah Done: tampilkan hasil ucapan di kotak yang bisa diedit, JANGAN langsung kirim.
+function showDraft() {
+  const spoken = (finalText + " " + interimText).trim();
   finalText = ""; interimText = ""; liveEl.textContent = "";
-  if (!userText) { setButton("Talk"); setStatus("I did not catch anything. Press Talk and try again."); return; }
+  const text = (baseText + " " + spoken).trim();
+  baseText = "";
+  draftEl.disabled = false;
+  setButton("Talk");
+  if (!text) {
+    if (reviewEl.hidden) setStatus("I did not catch anything. Press Talk and try again.");
+    return;
+  }
+  draftEl.value = text;
+  reviewEl.hidden = false;
+  setStatus("Check your sentence. Edit it if needed, then press Send.");
+  draftEl.focus();
+}
+
+function clearDraft() {
+  draftEl.value = ""; draftEl.disabled = false;
+  reviewEl.hidden = true; baseText = "";
+}
+
+function sendDraft() {
+  if (recording || thinking) return;
+  const text = draftEl.value.trim();
+  if (!text) { setStatus("Nothing to send. Type something or press Talk."); return; }
+  clearDraft();
+  submitText(text);
+}
+
+$("sendBtn").addEventListener("click", sendDraft);
+$("discardBtn").addEventListener("click", () => { if (!recording) { clearDraft(); setStatus("Discarded. Press Talk to try again."); } });
+draftEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendDraft(); }
+});
+
+async function submitText(userText) {
   busy = true; thinking = true;
   addMsg("me", userText);
   setStatus("Thinking...");

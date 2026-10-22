@@ -145,9 +145,9 @@ Tabel: `users`, `chats` (milik user), `messages` (milik chat). Skema ada di `db/
 
 | Anggota | Bagian | Bukti (commit/PR) |
 |---|---|---|
-| (isi) | Frontend | |
-| (isi) | Backend/API | |
-| (isi) | Database + Docker/Compose + pengujian | |
+| ESTHER NASYA IRENNE | Frontend | |
+| PRISCILLA VALENCIA ANDOW | Backend/API | |
+| MARYAM DINARA AL ADHAWIYYAH BURHANI | Database + Docker/Compose + pengujian | |
 
 ## Troubleshooting
 

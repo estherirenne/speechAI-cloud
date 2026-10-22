@@ -147,7 +147,7 @@ Tabel: `users`, `chats` (milik user), `messages` (milik chat). Skema ada di `db/
 |---|---|---|
 | ESTHER NASYA IRENNE | Frontend | Halaman Sign in/Sign up, alur Talk/Done, kotak edit teks, History, indikator server | 
 | PRISCILLA VALENCIA ANDOW | Backend/API | Pembuatan REST API, autentikasi JWT, integrasi AI Ollama, pembuatan skema PostgreSQL, pengaturan keamanan data |
-| MARYAM DINARA AL ADHAWIYYAH BURHANI | Database + Docker/Compose + pengujian | |
+| MARYAM DINARA AL ADHAWIYYAH BURHANI | Database + Docker/Compose + pengujian | Konfigurasi Docker & Docker Compose, setup db PostgreSQL, skrip inisialisasi DB & RLS, bikin skenario pengujian aplikasi. |
 
 ## Troubleshooting
 

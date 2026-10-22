@@ -143,11 +143,11 @@ Tabel: `users`, `chats` (milik user), `messages` (milik chat). Skema ada di `db/
 
 ## Catatan kontribusi anggota
 
-| Anggota | Bagian | Bukti (commit/PR) |
-|---|---|---|
-| ESTHER NASYA IRENNE | Frontend | |
-| PRISCILLA VALENCIA ANDOW | Backend/API | |
-| MARYAM DINARA AL ADHAWIYYAH BURHANI | Database + Docker/Compose + pengujian | |
+| Anggota | Bagian | Yang dikerjakan | Bukti (commit/PR) |
+|---|---|---|---|
+| ESTHER NASYA IRENNE | Frontend | Halaman Sign in/Sign up, alur Talk/Done, kotak edit teks, History, indikator server | https://github.com/estherirenne/speechAI-cloud/commit/c292493 |
+| PRISCILLA VALENCIA ANDOW | Backend/API | | |
+| MARYAM DINARA AL ADHAWIYYAH BURHANI | Database + Docker/Compose + pengujian | | |
 
 ## Troubleshooting
 

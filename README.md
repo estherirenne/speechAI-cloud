@@ -67,7 +67,7 @@ Tabel: `users`, `chats` (milik user), `messages` (milik chat). Skema ada di `db/
 - Healthcheck di Compose untuk ketiga layanan; `api` menunggu `db` healthy, `web` menunggu `api` healthy.
 - Log API berformat JSON satu baris per kejadian: `docker compose logs -f api`.
 
-## Skenario demo (sesuai ketentuan dosen)
+## Skenario demo 
 
 1. **Alur normal**: login sebagai alice → Talk → Done → AI membalas → chat muncul di History.
 2. **Container & infrastruktur**: tunjukkan
